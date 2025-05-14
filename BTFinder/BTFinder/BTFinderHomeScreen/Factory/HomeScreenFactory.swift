@@ -14,7 +14,8 @@ protocol IHomeScreenFactory {
 final class HomeScreenFactory: IHomeScreenFactory {
     
     func makeHomeScreen() -> BTFHomeScreenViewController {
-        let viewModel = BTFHomeViewModel()
+        let useCase = FindBluetoothDevicesUseCase(service: BluetoothService())
+        let viewModel = BTFHomeViewModel(useCase: useCase)
         return BTFHomeScreenViewController(viewModel: viewModel)
     }
 }

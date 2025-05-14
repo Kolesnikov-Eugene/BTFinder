@@ -6,83 +6,130 @@
 //
 
 import UIKit
+import Combine
 
 private let reuseIdentifier = "Cell"
 
-final class BTFResultsCollectionViewController: UICollectionViewController {
+enum BTFResultsSection: Hashable {
+    case main
+}
 
+enum BTFResultsItem: Hashable, Equatable {
+    case device(BTFDevice)
+}
+
+struct BTFDevice: Hashable {
+    let id = UUID()
+    let name: String
+}
+
+final class BTFResultsCollectionViewController: UICollectionViewController {
+    
+    // MARK: - pivate properties
+    private let viewModel: IBTFHomeViewModel
+    private var dataSource: UICollectionViewDiffableDataSource<BTFResultsSection, BTFResultsItem>!
+    private var bag = Set<AnyCancellable>()
+    
+    // MARK: - init
+    init(
+        viewModel: IBTFHomeViewModel
+    ) {
+        self.viewModel = viewModel
+        super.init(collectionViewLayout: BTFResultsCollectionViewController.createLayout())
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    // MARK: - lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        // Uncomment the following line to preserve selection between presentations
-        // self.clearsSelectionOnViewWillAppear = false
-
-        // Register cell classes
-        self.collectionView!.register(UICollectionViewCell.self, forCellWithReuseIdentifier: reuseIdentifier)
-
-        // Do any additional setup after loading the view.
+        self.collectionView
+            .register(BTFResultsCollectionViewCell.self, forCellWithReuseIdentifier: reuseIdentifier)
+        configureCollectionView()
+        configureDataSource()
+        bindToViewModel()
     }
-
-    /*
-    // MARK: - Navigation
-
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        // Get the new view controller using [segue destinationViewController].
-        // Pass the selected object to the new view controller.
-    }
-    */
-
-    // MARK: UICollectionViewDataSource
-
-    override func numberOfSections(in collectionView: UICollectionView) -> Int {
-        // #warning Incomplete implementation, return the number of sections
-        return 0
-    }
-
-
-    override func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        // #warning Incomplete implementation, return the number of items
-        return 0
-    }
-
-    override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: reuseIdentifier, for: indexPath)
     
-        // Configure the cell
+    // MARK: - layout
+    static func createLayout() -> UICollectionViewLayout {
+        return UICollectionViewCompositionalLayout { sectionIndex, layoutEnvironment in
+            let columns = 1
+            let cellWidth = 1.0
+            
+            let itemSize = NSCollectionLayoutSize(
+                widthDimension: .fractionalWidth(cellWidth),
+                heightDimension: .fractionalHeight(1.0)
+            )
+            let item = NSCollectionLayoutItem(layoutSize: itemSize)
+            item.contentInsets = .init(top: 8, leading: 0, bottom: 0, trailing: 0)
+            
+            let groupHeight: NSCollectionLayoutDimension = .fractionalHeight(1 / 9)
+            let groupSize = NSCollectionLayoutSize(
+                widthDimension: .fractionalWidth(1.0),
+                heightDimension: groupHeight
+            )
+            
+            let group = NSCollectionLayoutGroup.horizontal(
+                layoutSize: groupSize,
+                repeatingSubitem: item,
+                count: columns
+            )
+            
+            let section = NSCollectionLayoutSection(group: group)
+            section.contentInsets = .init(top: 10, leading: 0, bottom: 10, trailing: 0)
+            return section
+        }
+    }
     
-        return cell
+    // MARK: - private methods
+    private func bindToViewModel() {
+        viewModel.devices
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] _ in
+                    self?.updateSnapshot()
+                }
+                .store(in: &bag)
     }
-
-    // MARK: UICollectionViewDelegate
-
-    /*
-    // Uncomment this method to specify if the specified item should be highlighted during tracking
-    override func collectionView(_ collectionView: UICollectionView, shouldHighlightItemAt indexPath: IndexPath) -> Bool {
-        return true
-    }
-    */
-
-    /*
-    // Uncomment this method to specify if the specified item should be selected
-    override func collectionView(_ collectionView: UICollectionView, shouldSelectItemAt indexPath: IndexPath) -> Bool {
-        return true
-    }
-    */
-
-    /*
-    // Uncomment these methods to specify if an action menu should be displayed for the specified item, and react to actions performed on the item
-    override func collectionView(_ collectionView: UICollectionView, shouldShowMenuForItemAt indexPath: IndexPath) -> Bool {
-        return false
-    }
-
-    override func collectionView(_ collectionView: UICollectionView, canPerformAction action: Selector, forItemAt indexPath: IndexPath, withSender sender: Any?) -> Bool {
-        return false
-    }
-
-    override func collectionView(_ collectionView: UICollectionView, performAction action: Selector, forItemAt indexPath: IndexPath, withSender sender: Any?) {
     
+    private func configureCollectionView() {
+        collectionView.translatesAutoresizingMaskIntoConstraints = false
+        collectionView.backgroundColor = .clear
+        collectionView.allowsSelection = true
+        collectionView.allowsMultipleSelection = false
     }
-    */
-
+    
+    private func configureDataSource() {
+        dataSource = UICollectionViewDiffableDataSource(
+            collectionView: collectionView,
+            cellProvider: { collectionView, indexPath, itemIdentifier in
+                guard let cell = collectionView.dequeueReusableCell(
+                    withReuseIdentifier: reuseIdentifier,
+                    for: indexPath
+                ) as? BTFResultsCollectionViewCell else {
+                    fatalError("Error creating news feed cell")
+                }
+                switch itemIdentifier {
+                case .device(let deviceItem):
+                    cell.configure(with: deviceItem)
+                }
+                return cell
+            })
+        updateSnapshot()
+    }
+    
+    private func updateSnapshot() {
+        var snapshot = NSDiffableDataSourceSnapshot<BTFResultsSection, BTFResultsItem>()
+        snapshot.appendSections([.main])
+        snapshot.appendItems(viewModel.devicesList)
+        dataSource.apply(snapshot, animatingDifferences: true)
+    }
+    
+    override func collectionView(
+        _ collectionView: UICollectionView,
+        didSelectItemAt indexPath: IndexPath
+    ) {
+        
+    }
 }

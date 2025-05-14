@@ -11,8 +11,8 @@ import Combine
 final class BTFHomeView: UIView {
     
     // MARK: - UI
-    private var mainButton: BTFMainButton!
-    private var btfResultsCollectionView: UICollectionViewController!
+    private let searchButton: BTFSearchButton
+    private let btfResultsCollectionView: UICollectionViewController
     
     // MARK: - private properties
     private let viewModel: IBTFHomeViewModel
@@ -23,11 +23,17 @@ final class BTFHomeView: UIView {
         viewModel: IBTFHomeViewModel
     ) {
         self.viewModel = viewModel
+        // TODO: - extract to factory
+        searchButton = BTFSearchButton(
+            frame: .zero,
+            titleLabel: Constatns.searchButtonTitle,
+            action: UIAction { _ in
+                viewModel.findBTs()
+            }
+        )
+        btfResultsCollectionView = BTFResultsCollectionViewController(viewModel: viewModel)
         super.init(frame: frame)
         setupView()
-        // TODO: - extract to factory
-        mainButton = BTFMainButton(frame: .zero)
-        btfResultsCollectionView = BTFResultsCollectionViewController()
     }
     
     required init?(coder: NSCoder) {
@@ -36,16 +42,34 @@ final class BTFHomeView: UIView {
     
     // MARK: - private methods
     private func setupView() {
-        backgroundColor = .blue
+        backgroundColor = .systemBackground
+        
         addSubviews()
         applyConstraints()
     }
     
     private func addSubviews() {
-        
+        addSubview(searchButton)
+        addSubview(btfResultsCollectionView.collectionView)
     }
     
     private func applyConstraints() {
+        // searchButton constraints
+        NSLayoutConstraint.activate([
+            searchButton.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: 16),
+            searchButton.centerXAnchor.constraint(equalTo: centerXAnchor),
+            searchButton.widthAnchor.constraint(equalToConstant: 150),
+            searchButton.heightAnchor.constraint(equalToConstant: 150)
+        ])
         
+        // collectionView constraints
+        if let collectionView = btfResultsCollectionView.collectionView {
+            NSLayoutConstraint.activate([
+                collectionView.topAnchor.constraint(equalTo: searchButton.bottomAnchor, constant: 16),
+                collectionView.leadingAnchor.constraint(equalTo: leadingAnchor),
+                collectionView.trailingAnchor.constraint(equalTo: trailingAnchor),
+                collectionView.bottomAnchor.constraint(equalTo: bottomAnchor)
+            ])
+        }
     }
 }
