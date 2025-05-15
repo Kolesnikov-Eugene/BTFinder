@@ -11,10 +11,15 @@ final class BTFHomeScreenViewController: UIViewController {
     
     // MARK: - private properties
     private let viewModel: IBTFHomeViewModel
+    private let homeViewFactory: IHomeScreenFactory
     
     // MARK: - init
-    init(viewModel: IBTFHomeViewModel) {
+    init(
+        viewModel: IBTFHomeViewModel,
+        viewFactory: IHomeScreenFactory
+    ) {
         self.viewModel = viewModel
+        self.homeViewFactory = viewFactory
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -29,6 +34,6 @@ final class BTFHomeScreenViewController: UIViewController {
     
     override func loadView() {
         super.loadView()
-        self.view = BTFHomeView(frame: .zero, viewModel: viewModel)
+        self.view = homeViewFactory.makeHomeView(viewModel: viewModel)
     }
 }

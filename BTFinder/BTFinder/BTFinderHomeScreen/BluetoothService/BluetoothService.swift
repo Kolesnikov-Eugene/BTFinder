@@ -10,25 +10,39 @@ import Combine
 
 protocol IBluetoothService {
     var foundDevicesPublisher: AnyPublisher<[BluetoothDevice], Never> { get }
+    var connectedDevicePublisher: AnyPublisher<BluetoothDevice?, Never> { get }
+
     func startScanning(withTimeout timeout: TimeInterval)
     func stopScanning()
+    func connect(to device: BTFDevice) -> AnyPublisher<Bool, Never>
 }
 
 final class BluetoothService: NSObject, IBluetoothService {
+
+    // MARK: - private properties
+    private var connectedPeripheral: CBPeripheral?
     private var centralManager: CBCentralManager!
     private var devices: [UUID: BluetoothDevice] = [:]
     private let devicesSubject = CurrentValueSubject<[BluetoothDevice], Never>([])
+    private let connectedDeviceSubject = CurrentValueSubject<BluetoothDevice?, Never>(nil)
     private var scanTimeoutCancellable: AnyCancellable?
+    private let connectionSubject = PassthroughSubject<Bool, Never>()
 
     var foundDevicesPublisher: AnyPublisher<[BluetoothDevice], Never> {
         devicesSubject.eraseToAnyPublisher()
     }
 
+    var connectedDevicePublisher: AnyPublisher<BluetoothDevice?, Never> {
+        connectedDeviceSubject.eraseToAnyPublisher()
+    }
+
+    // MARK: - init
     override init() {
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: .main)
     }
 
+    // MARK: - public methods
     func startScanning(withTimeout timeout: TimeInterval = 10) {
         guard centralManager.state == .poweredOn else { return }
 
@@ -37,7 +51,6 @@ final class BluetoothService: NSObject, IBluetoothService {
         centralManager.scanForPeripherals(withServices: nil, options: nil)
 
         scanTimeoutCancellable?.cancel()
-
         scanTimeoutCancellable = Just(())
             .delay(for: .seconds(timeout), scheduler: RunLoop.main)
             .sink { [weak self] _ in
@@ -50,15 +63,29 @@ final class BluetoothService: NSObject, IBluetoothService {
         scanTimeoutCancellable?.cancel()
         scanTimeoutCancellable = nil
     }
+    
+    func connect(to device: BTFDevice) -> AnyPublisher<Bool, Never> {
+        let peripherals = centralManager.retrievePeripherals(withIdentifiers: [device.identifier])
+        guard let peripheral = peripherals.first else {
+            connectionSubject.send(false)
+            return connectionSubject.eraseToAnyPublisher()
+        }
+
+        connectedPeripheral = peripheral
+        centralManager.connect(peripheral, options: nil)
+        return connectionSubject.eraseToAnyPublisher()
+    }
+    
+    func disconnectCurrentPeripheral() {
+        guard let peripheral = connectedPeripheral else { return }
+        centralManager.cancelPeripheralConnection(peripheral)
+    }
 }
 
+// MARK: - CBCentralManagerDelegate
 extension BluetoothService: CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
-        func centralManagerDidUpdateState(_ central: CBCentralManager) {
-//            if central.state == .poweredOn {
-//                startScanning()
-//            }
-        }
+        // respond to Bluetooth state changes
     }
 
     func centralManager(
@@ -76,56 +103,35 @@ extension BluetoothService: CBCentralManagerDelegate {
             devicesSubject.send(Array(devices.values))
         }
     }
-}
+    
+    func centralManager(
+        _ central: CBCentralManager,
+        didConnect peripheral: CBPeripheral
+    ) {
+        print("Connected to \(peripheral.name ?? "Unknown")")
+        if peripheral == connectedPeripheral {
+            connectionSubject.send(true)
+        }
+    }
 
-//protocol IBluetoothService {
-//    var foundDevicesPublisher: AnyPublisher<[BluetoothDevice], Never> { get }
-//    func startScanning()
-//    func stopScanning()
-//}
-//
-//final class BluetoothService: NSObject, IBluetoothService {
-//    private var centralManager: CBCentralManager!
-//    private var devices: [UUID: BluetoothDevice] = [:]
-//    private let devicesSubject = CurrentValueSubject<[BluetoothDevice], Never>([])
-//    
-//    var foundDevicesPublisher: AnyPublisher<[BluetoothDevice], Never> {
-//        devicesSubject.eraseToAnyPublisher()
-//    }
-//    
-//    override init() {
-//        super.init()
-//        centralManager = CBCentralManager(delegate: self, queue: .main)
-//    }
-//    
-//    func startScanning() {
-//        guard centralManager.state == .poweredOn else { return }
-//        devices = [:]
-//        centralManager.scanForPeripherals(withServices: nil, options: nil)
-//    }
-//    
-//    func stopScanning() {
-//        centralManager.stopScan()
-//    }
-//}
-//
-//extension BluetoothService: CBCentralManagerDelegate {
-//    func centralManagerDidUpdateState(_ central: CBCentralManager) {
-//        if central.state == .poweredOn {
-//            startScanning()
-//        }
-//    }
-//    
-//    func centralManager(
-//        _ central: CBCentralManager,
-//        didDiscover peripheral: CBPeripheral,
-//        advertisementData: [String : Any],
-//        rssi RSSI: NSNumber
-//    ) {
-//        let id = peripheral.identifier
-//        let name = peripheral.name ?? "Unknown"
-//        let device = BluetoothDevice(identifier: id, name: name)
-//        devices[id] = device
-//        devicesSubject.send(Array(devices.values))
-//    }
-//}
+    func centralManager(
+        _ central: CBCentralManager,
+        didFailToConnect peripheral: CBPeripheral,
+        error: Error?
+    ) {
+        if peripheral == connectedPeripheral {
+            connectionSubject.send(false)
+        }
+    }
+    
+    func centralManager(
+        _ central: CBCentralManager,
+        didDisconnectPeripheral peripheral: CBPeripheral,
+        error: Error?
+    ) {
+        if peripheral == connectedPeripheral {
+            connectedPeripheral = nil
+        }
+        print(" Disconnected from \(peripheral.name ?? "Unknown")")
+    }
+}

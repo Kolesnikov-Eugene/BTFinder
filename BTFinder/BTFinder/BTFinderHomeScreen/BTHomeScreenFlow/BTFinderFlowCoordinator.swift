@@ -13,7 +13,6 @@ final class BTFinderFlowCoordinator: Coordinator {
     private let navigationController: UINavigationController
     private let homeScreenFactory: IHomeScreenFactory
     
-    // Lifecycle callback
     var onFinish: (() -> Void)?
     
     // MARK: - Init

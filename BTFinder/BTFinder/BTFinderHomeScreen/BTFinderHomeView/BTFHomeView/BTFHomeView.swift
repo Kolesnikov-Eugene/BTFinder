@@ -16,22 +16,21 @@ final class BTFHomeView: UIView {
     
     // MARK: - private properties
     private let viewModel: IBTFHomeViewModel
+    private let factory: IHomeScreenFactory
     
     // MARK: - init
     init(
         frame: CGRect,
-        viewModel: IBTFHomeViewModel
+        viewModel: IBTFHomeViewModel,
+        factory: IHomeScreenFactory
     ) {
         self.viewModel = viewModel
-        // TODO: - extract to factory
-        searchButton = BTFSearchButton(
-            frame: .zero,
-            titleLabel: Constatns.searchButtonTitle,
-            action: UIAction { _ in
-                viewModel.findBTs()
-            }
-        )
-        btfResultsCollectionView = BTFResultsCollectionViewController(viewModel: viewModel)
+        self.factory = factory
+        
+        searchButton = factory.makeSearchButton(action: UIAction { _ in
+            viewModel.findBTs()
+        })
+        btfResultsCollectionView = factory.makeBTFResultsCollectionViewController(viewModel: viewModel)
         super.init(frame: frame)
         setupView()
     }

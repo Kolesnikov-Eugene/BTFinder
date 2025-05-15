@@ -10,19 +10,6 @@ import Combine
 
 private let reuseIdentifier = "Cell"
 
-enum BTFResultsSection: Hashable {
-    case main
-}
-
-enum BTFResultsItem: Hashable, Equatable {
-    case device(BTFDevice)
-}
-
-struct BTFDevice: Hashable {
-    let id = UUID()
-    let name: String
-}
-
 final class BTFResultsCollectionViewController: UICollectionViewController {
     
     // MARK: - pivate properties
@@ -65,7 +52,7 @@ final class BTFResultsCollectionViewController: UICollectionViewController {
             let item = NSCollectionLayoutItem(layoutSize: itemSize)
             item.contentInsets = .init(top: 8, leading: 0, bottom: 0, trailing: 0)
             
-            let groupHeight: NSCollectionLayoutDimension = .fractionalHeight(1 / 9)
+            let groupHeight: NSCollectionLayoutDimension = .fractionalHeight(Constatns.collectionViewCellheight)
             let groupSize = NSCollectionLayoutSize(
                 widthDimension: .fractionalWidth(1.0),
                 heightDimension: groupHeight
@@ -130,6 +117,7 @@ final class BTFResultsCollectionViewController: UICollectionViewController {
         _ collectionView: UICollectionView,
         didSelectItemAt indexPath: IndexPath
     ) {
-        
+        let index = indexPath.row
+        viewModel.connectToDevice(at: index)
     }
 }
