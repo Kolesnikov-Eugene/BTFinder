@@ -8,7 +8,7 @@
 import UIKit
 import Combine
 
-private let reuseIdentifier = "Cell"
+private let reuseIdentifier = "DeviceCell"
 
 final class BTFResultsCollectionViewController: UICollectionViewController {
     
@@ -70,6 +70,14 @@ final class BTFResultsCollectionViewController: UICollectionViewController {
         }
     }
     
+    override func collectionView(
+        _ collectionView: UICollectionView,
+        didSelectItemAt indexPath: IndexPath
+    ) {
+        let index = indexPath.row
+        viewModel.connectToDevice(at: index)
+    }
+    
     // MARK: - private methods
     private func bindToViewModel() {
         viewModel.devices
@@ -111,13 +119,5 @@ final class BTFResultsCollectionViewController: UICollectionViewController {
         snapshot.appendSections([.main])
         snapshot.appendItems(viewModel.devicesList)
         dataSource.apply(snapshot, animatingDifferences: true)
-    }
-    
-    override func collectionView(
-        _ collectionView: UICollectionView,
-        didSelectItemAt indexPath: IndexPath
-    ) {
-        let index = indexPath.row
-        viewModel.connectToDevice(at: index)
     }
 }

@@ -13,8 +13,6 @@ final class BTFinderFlowCoordinator: Coordinator {
     private let navigationController: UINavigationController
     private let homeScreenFactory: IHomeScreenFactory
     
-    var onFinish: (() -> Void)?
-    
     // MARK: - Init
     init(
         navigationController: UINavigationController,
