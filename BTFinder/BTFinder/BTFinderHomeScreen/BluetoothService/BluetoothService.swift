@@ -18,6 +18,15 @@ protocol IBluetoothService {
 }
 
 final class BluetoothService: NSObject, IBluetoothService {
+    
+    // MARK: - connection publishers
+    var foundDevicesPublisher: AnyPublisher<[BluetoothDevice], Never> {
+        devicesSubject.eraseToAnyPublisher()
+    }
+
+    var connectedDevicePublisher: AnyPublisher<BluetoothDevice?, Never> {
+        connectedDeviceSubject.eraseToAnyPublisher()
+    }
 
     // MARK: - private properties
     private var connectedPeripheral: CBPeripheral?
@@ -27,14 +36,6 @@ final class BluetoothService: NSObject, IBluetoothService {
     private let connectedDeviceSubject = CurrentValueSubject<BluetoothDevice?, Never>(nil)
     private var scanTimeoutCancellable: AnyCancellable?
     private let connectionSubject = PassthroughSubject<Bool, Never>()
-
-    var foundDevicesPublisher: AnyPublisher<[BluetoothDevice], Never> {
-        devicesSubject.eraseToAnyPublisher()
-    }
-
-    var connectedDevicePublisher: AnyPublisher<BluetoothDevice?, Never> {
-        connectedDeviceSubject.eraseToAnyPublisher()
-    }
 
     // MARK: - init
     override init() {

@@ -23,8 +23,6 @@ final class BTFHomeViewModel: IBTFHomeViewModel {
     @Published private(set) var devicesList: [BTFResultsItem] = []
     @Published private var _isLoading: Bool = false
     @Published private var _connectedDevice: BTFDevice? = nil
-
-    // Raw devices for internal mapping
     @Published private var rawDevices: [BluetoothDevice] = []
 
     // MARK: - Publishers
@@ -41,26 +39,21 @@ final class BTFHomeViewModel: IBTFHomeViewModel {
     }
 
     // MARK: - Dependencies
-    private let useCase: IFindBluetoothDevicesUseCase
+    private let findDeviceUseCase: IFindBluetoothDevicesUseCase
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Init
     init(useCase: IFindBluetoothDevicesUseCase) {
-        self.useCase = useCase
+        self.findDeviceUseCase = useCase
 
-        useCase.connectedDevice
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] device in
-                self?._connectedDevice = device.map { BTFDevice(identifier: $0.identifier,name: $0.name) }
-            }
-            .store(in: &cancellables)
+        bindToBLEConnection()
     }
 
     // MARK: - Public API
     func findBTs() {
         _isLoading = true
 
-        useCase.execute()
+        findDeviceUseCase.execute()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] deviceList in
                 self?.rawDevices = deviceList
@@ -74,7 +67,7 @@ final class BTFHomeViewModel: IBTFHomeViewModel {
         guard index < devicesList.count else { return }
         
         if case .device(let device) = devicesList[index] {
-            useCase.connect(to: device)
+            findDeviceUseCase.connect(to: device)
                 .receive(on: DispatchQueue.main)
                 .sink { [weak self] success in
                     guard let self = self else { return }
@@ -88,5 +81,15 @@ final class BTFHomeViewModel: IBTFHomeViewModel {
                 }
                 .store(in: &cancellables)
         }
+    }
+    
+    // MARK: - private methods
+    private func bindToBLEConnection() {
+        findDeviceUseCase.connectedDevice
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] device in
+                self?._connectedDevice = device.map { BTFDevice(identifier: $0.identifier,name: $0.name) }
+            }
+            .store(in: &cancellables)
     }
 }
